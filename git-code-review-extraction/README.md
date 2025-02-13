@@ -5,7 +5,7 @@ A command-line tool to fetch and export code review data from GitHub or GitLab m
 ## Installation
 
 ```bash
-node ./dist/bundle.cjs [options]
+node git.cjs [options]
 ```
 
 ### Required Options
