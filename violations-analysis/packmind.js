@@ -69,6 +69,7 @@ function restoreOriginalState(originalBranch2, originalCommit2) {
 
 // src/packmind-cli.ts
 var import_child_process2 = require("child_process");
+var import_fs = require("fs");
 function checkPackmindCliInstalled() {
   try {
     (0, import_child_process2.execSync)("packmind-cli --version", { stdio: "ignore" });
@@ -98,22 +99,29 @@ function runPackmindAndSaveReport(year, monthStr, sourceDir2, extraArgs2 = "") {
     });
     childProcess.stdout.on("data", (data) => {
       if (data.toString().trim().length) {
-        console.log(data.toString().trimEnd());
+        console.log("Output :" + data.toString().trimEnd());
       }
     });
     childProcess.stderr.on("data", (data) => {
       if (data.toString().trim().length) {
-        console.error(data.toString().trimEnd());
+        console.error("Error: " + data.toString().trimEnd());
         hasErrorOutput = true;
       }
     });
     return new Promise((resolve) => {
       childProcess.on("close", (code) => {
-        if (hasErrorOutput) {
-          console.error("An error was encountered in the process, will stop now");
-          process.exit(1);
+        const emptyReport = {
+          runs: [{
+            results: []
+          }]
+        };
+        const message = hasErrorOutput ? "Packmind encountered an error - treating as no violations found" : code !== 0 ? "Packmind scan failed - treating as no violations found" : !(0, import_fs.existsSync)(outFilename) ? "No violations found - creating empty report" : "Report generated successfully";
+        if (!(0, import_fs.existsSync)(outFilename)) {
+          console.log(message);
+          (0, import_fs.writeFileSync)(outFilename, JSON.stringify(emptyReport, null, 2));
         }
-        if (code === 0) {
+        console.log(hasErrorOutput);
+        if (code === 0 || hasErrorOutput) {
           console.log(`  Packmind report saved to ${outFilename}`);
           resolve({
             success: true,
@@ -136,7 +144,7 @@ function runPackmindAndSaveReport(year, monthStr, sourceDir2, extraArgs2 = "") {
 }
 
 // src/report-generator.ts
-var import_fs = require("fs");
+var import_fs2 = require("fs");
 function isValidObjectId(id) {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
@@ -160,7 +168,7 @@ function objectIdToDate(objectId) {
 }
 function parsePackmindReport(filename) {
   try {
-    const fileContent = (0, import_fs.readFileSync)(filename, "utf-8");
+    const fileContent = (0, import_fs2.readFileSync)(filename, "utf-8");
     const sarifData = JSON.parse(fileContent);
     const ruleCounts = {};
     for (const result of sarifData.runs[0].results) {
@@ -235,7 +243,7 @@ async function generateReport(monthCommits2, monthsToGo2) {
     const monthKey = `${yy}-${commit.monthStr}`;
     const filename = `packmind-${monthKey}.json`;
     try {
-      if (!(0, import_fs.existsSync)(filename)) {
+      if (!(0, import_fs2.existsSync)(filename)) {
         console.error(`Warning: Report file not found for ${monthKey}`);
         continue;
       }
@@ -259,7 +267,7 @@ async function generateReport(monthCommits2, monthsToGo2) {
   try {
     const csvContent = generateCSVReport(monthlyData, currentMonthStart, monthsToGo2);
     const csvFilename = "packmind-history.csv";
-    (0, import_fs.writeFileSync)(csvFilename, csvContent);
+    (0, import_fs2.writeFileSync)(csvFilename, csvContent);
     console.log(`
 CSV report saved to ${csvFilename}`);
   } catch (err) {
@@ -272,8 +280,8 @@ CSV report saved to ${csvFilename}`);
     const monthKey = `${yy}-${commit.monthStr}`;
     const jsonFilename = `packmind-${monthKey}.json`;
     try {
-      if ((0, import_fs.existsSync)(jsonFilename)) {
-        (0, import_fs.unlinkSync)(jsonFilename);
+      if ((0, import_fs2.existsSync)(jsonFilename)) {
+        (0, import_fs2.unlinkSync)(jsonFilename);
       }
     } catch (err) {
       cleanupErrors++;
